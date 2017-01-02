@@ -21,6 +21,7 @@ import numpy as np
 X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1, random_state=42)
 
 print('done splitting training and validation sets')
+print(len(X_train), len(X_val), len(y_train), len(y_val))
 
 ### Define your architecture here.
 ### Feel free to use as many code cells as needed.
@@ -36,20 +37,20 @@ def conv_net(x):
     conv1 = tf.nn.bias_add(conv1, b1)
     conv1 = tf.nn.relu(conv1)
 
-    # 28x28x128
-    W2 = tf.Variable(tf.truncated_normal([3, 3, 32, 128]))
-    b2 = tf.Variable(tf.zeros(128))
+    # 28x28x32
+    W2 = tf.Variable(tf.truncated_normal([3, 3, 32, 32]))
+    b2 = tf.Variable(tf.zeros(32))
     conv2 = tf.nn.conv2d(conv1, W2, strides=[1, 1, 1, 1], padding='VALID')
     conv2 = tf.nn.bias_add(conv2, b2)
     conv2 = tf.nn.relu(conv2)
 
-    # 14x14x128
+    # 14x14x32
     pool = tf.nn.max_pool(conv2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='VALID')
 
     pool = tf.nn.dropout(pool, 0.25)
 
-    fc1 = tf.reshape(pool, [-1, 14*14*128])
-    fc1_W = tf.Variable(tf.truncated_normal(shape=(14*14*128, 128)))
+    fc1 = tf.reshape(pool, [-1, 14*14*32])
+    fc1_W = tf.Variable(tf.truncated_normal(shape=(14*14*32, 128)))
     fc1_b = tf.Variable(tf.zeros(128))
     fc1 = tf.matmul(fc1, fc1_W) + fc1_b
     fc1 = tf.nn.relu(fc1)
@@ -80,14 +81,13 @@ correct_prediction = tf.equal(tf.argmax(logits, 1), tf.argmax(y_one_hot, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
 
 init = tf.initialize_all_variables()
-print('done')
 
 ### Train your model here.
 ### Feel free to use as many code cells as needed.
 saver = tf.train.Saver()
 
 batch_size = 128
-training_epochs = 100
+training_epochs = 20
 
 print(len(y_train), 'training examples')
 print('learning rate', learning_rate)
@@ -106,9 +106,10 @@ with tf.Session() as sess:
             sess.run(optimizer, feed_dict={x: batch_x, y: batch_y})
             i = i + batch_size
         # Display logs per epoch step
-        c = sess.run(cost, feed_dict={x: X_train, y: y_train})
+        c = sess.run(cost, feed_dict={x: batch_x, y: batch_y})
         print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(c))
-        print("Accuracy:", accuracy.eval({x: X_val, y: y_val}))
+
+    print("Accuracy:", accuracy.eval({x: X_val, y: y_val}))
     print("Optimization Finished!")
 
     # Save the variables to disk.

@@ -15,21 +15,8 @@ with open(testing_file, mode='rb') as f:
 X_train, y_train = train['features'], train['labels']
 X_test, y_test = test['features'], test['labels']
 
-### Preprocess the data here.
-### Feel free to use as many code cells as needed.
-def single_channel_L_HLS(data):
-    result = np.empty([len(data), 32, 32])
-    for i in range(len(data)):
-        result[i] = cv2.cvtColor(data[i], cv2.COLOR_RGB2HLS)[:,:,1]
-    return result
-
-# convert RGB to L of HLS
-# data was n*32*32*3, now n*32*32
-X_train = single_channel_L_HLS(X_train)
-X_test = single_channel_L_HLS(X_test)
-print('done converting to single channel')
-
 # create jittered duplicates (for training set only)
+import random
 
 # returns img copy randomly jittered
 def jitter(source):
@@ -37,7 +24,7 @@ def jitter(source):
     # add padding and copy img into center
     border = 8
     new_dim = 32 + 2*border
-    frame = cv2.copyMakeBorder(np.zeros((new_dim, new_dim)), border, border, border, border, cv2.BORDER_CONSTANT, value=[127, 127, 127])
+    frame = cv2.copyMakeBorder(np.zeros((new_dim, new_dim, 3)), border, border, border, border, cv2.BORDER_CONSTANT, value=[127, 127, 127])
 
     for i in range(border, border + 32):
         for j in range(border, border + 32):
@@ -74,7 +61,7 @@ def jitter(source):
     new_size = round(scale * 32 / 2) * 2
     scaled_img = cv2.resize(img, (new_size, new_size))
 
-    margin = abs(new_size - 32) / 2
+    margin = round(abs(new_size - 32) / 2)
     index_max = 31 - margin
     if new_size > 32:
         img = scaled_img[margin:(margin + 32), margin:(margin + 32)]
@@ -90,7 +77,7 @@ def jitter(source):
 # 5 jittered versions + original img
 n_train = len(y_train)
 
-X_train = np.resize(X_train, (n_train * 6, 32, 32))
+X_train = np.resize(X_train, (n_train * 6, 32, 32, 3))
 y_train = np.resize(y_train, n_train * 6)
 
 for i in range(n_train):
@@ -102,3 +89,40 @@ for i in range(n_train):
 
 # multiply examples by 6 (original + 5 jittered)
 print(len(X_train))
+
+### Preprocess the data here.
+### Feel free to use as many code cells as needed.
+def single_channel_L_HLS(data):
+    result = np.empty([len(data), 32, 32])
+    for i in range(len(data)):
+        result[i] = cv2.cvtColor(data[i], cv2.COLOR_RGB2HLS)[:,:,1]
+    return result
+
+# convert RGB to L of HLS
+# data was n*32*32*3, now n*32*32
+X_train = single_channel_L_HLS(X_train)
+X_test = single_channel_L_HLS(X_test)
+print('done converting to single channel')
+
+def global_normalize(data):
+    for i in range(len(data)):
+        data[i] = cv2.normalize(data[i], data[i], alpha=-0.5, beta=0.5, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+
+# normalize pixels to [-0.5, 0.5]
+global_normalize(X_train)
+global_normalize(X_test)
+print('done normalizing')
+
+# pickle preprocessed data with additional data
+import pickle
+
+with open('x_train_normalized_2.p', mode='wb') as f:
+    pickle.dump(X_train, f)
+with open('y_train_normalized_2.p', mode='wb') as f:
+    pickle.dump(y_train, f)
+with open('x_test_normalized_2.p', mode='wb') as f:
+    pickle.dump(X_test, f)
+with open('y_test_normalized_2.p', mode='wb') as f:
+    pickle.dump(y_test, f)
+
+print('preprocessed data with additional data saved')
